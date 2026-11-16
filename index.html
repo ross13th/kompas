@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#05080F">
+<title>Компас · трекер</title>
+<style>
+:root{
+  --bg:#05080F; --ink:#E9F0FF; --dim:#93A6CB; --line:#25334F;
+  --card:rgba(18,29,52,.82); --card2:rgba(13,22,40,.9);
+  --cyan:#4FD1FF; --violet:#A78BFA; --gold:#FFC857; --green:#5BE49B; --red:#FF8A80;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:#05080F; color:var(--ink); min-height:100vh;
+  font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,"Helvetica Neue",Arial,sans-serif;
+  font-size:17px; line-height:1.45; overflow-x:hidden;
+}
+#sky{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+#app{position:relative;z-index:1;max-width:1040px;margin:0 auto;padding:22px 18px 90px}
+
+/* ---------- шапка ---------- */
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.logo{font-size:34px;line-height:1;filter:drop-shadow(0 0 16px #4FD1FF88);animation:float 5s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.title{font-size:1.32em;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#D6E4FF}
+.sub{font-size:.92em;color:var(--dim);margin-top:2px}
+.chips{margin-left:auto;display:flex;gap:9px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:999px;font-size:.84em;
+  font-weight:700;border:1px solid #31425F;background:#111C33;color:#CFE0FF;white-space:nowrap}
+.chip.gold{border-color:#7A5A18;background:linear-gradient(180deg,#2A2110,#1A1509);color:var(--gold)}
+.chip.fire{border-color:#7A2E18;background:linear-gradient(180deg,#2A1410,#1A0D09);color:#FFA07A}
+.chip.cyan{border-color:#1C5A73;background:linear-gradient(180deg,#0E2530,#0A1A22);color:var(--cyan)}
+
+/* ---------- вкладки ---------- */
+.tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 0 12px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;padding:9px 16px;border-radius:999px;border:1px solid #2A3A5E;background:#0E1728;
+  color:#B9C9E6;font:inherit;font-size:.88em;font-weight:700;cursor:pointer;transition:.15s}
+.tab:hover{border-color:#3C5580;color:#E9F0FF}
+.tab.on{background:linear-gradient(180deg,#1B2C4E,#122038);border-color:var(--cyan);color:#EAF4FF;
+  box-shadow:0 0 18px -8px #4FD1FF}
+
+/* ---------- карточки ---------- */
+.cards{display:grid;gap:12px;grid-template-columns:repeat(4,1fr);margin-bottom:6px}
+@media(max-width:860px){.cards{grid-template-columns:repeat(2,1fr)}}
+.card{position:relative;border:1px solid var(--line);border-radius:16px;padding:15px 17px;
+  background:linear-gradient(180deg,rgba(21,35,64,.86),rgba(13,22,40,.9));overflow:hidden}
+.card:before{content:"";position:absolute;inset:0 0 auto 0;height:2px;
+  background:linear-gradient(90deg,transparent,#4FD1FF77,transparent)}
+.card.gold:before{background:linear-gradient(90deg,transparent,#FFC85788,transparent)}
+.card.violet:before{background:linear-gradient(90deg,transparent,#A78BFA88,transparent)}
+.lbl{font-size:.76em;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);font-weight:700}
+.big{font-size:2.2em;font-weight:800;line-height:1.05;margin:4px 0 2px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.big.cyan{color:var(--cyan)} .big.gold{color:var(--gold)} .big.violet{color:var(--violet)} .big.green{color:var(--green)}
+.note{font-size:.85em;color:var(--dim)}
+.bar{height:10px;border-radius:99px;background:#1A2540;overflow:hidden;margin-top:11px}
+.bar>i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#4FD1FF,#A78BFA);
+  box-shadow:0 0 12px #4FD1FF66;transition:width .5s}
+.bar.gold>i{background:linear-gradient(90deg,#FFC857,#FF7AB6);box-shadow:0 0 12px #FFC85766}
+.bar.green>i{background:linear-gradient(90deg,#5BE49B,#4FD1FF)}
+
+h2.sec{font-size:.8em;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);font-weight:700;
+  margin:26px 0 12px;display:flex;align-items:center;gap:12px}
+h2.sec:after{content:"";flex:1;height:1px;background:linear-gradient(90deg,#2A3A5C,transparent)}
+
+/* ---------- список заданий ---------- */
+.group{margin-bottom:18px}
+.group .gh{display:flex;align-items:center;gap:9px;margin:0 0 9px;font-size:.92em;font-weight:800;color:#CFE0FF}
+.group .gh span.sum{margin-left:auto;font-size:.82em;color:var(--dim);font-weight:600}
+.task{display:flex;align-items:center;gap:13px;width:100%;text-align:left;padding:13px 15px;margin-bottom:8px;
+  border-radius:13px;border:1px solid #1E2A45;background:rgba(13,22,40,.72);color:var(--ink);
+  font:inherit;font-size:.98em;cursor:pointer;transition:.12s;position:relative}
+.task:hover{border-color:#33507C;transform:translateY(-1px)}
+.task .box{width:26px;height:26px;flex:none;border-radius:8px;border:2px solid #35507A;display:flex;
+  align-items:center;justify-content:center;font-size:15px;color:#0A1220;transition:.15s}
+.task .nm{flex:1;min-width:0;line-height:1.3}
+.task .pt{font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums;white-space:nowrap}
+.task.done{border-color:#2C5A44;background:rgba(16,38,30,.72)}
+.task.done .box{background:var(--green);border-color:var(--green)}
+.task.done .nm{color:#BFE9D2}
+.task.half{border-color:#6B5A22;background:rgba(38,32,16,.72)}
+.task.half .box{background:var(--gold);border-color:var(--gold)}
+.task.zero{opacity:.55}
+.task .tag{font-size:.7em;padding:2px 8px;border-radius:99px;border:1px solid #33415C;color:var(--dim)}
+
+/* ---------- неделя ---------- */
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:9px}
+@media(max-width:700px){.week{grid-template-columns:repeat(4,1fr)}}
+.day{border:1px solid #1E2A45;border-radius:14px;padding:12px 6px 10px;background:rgba(13,22,40,.66);
+  text-align:center;cursor:pointer;transition:.12s;font:inherit;color:inherit}
+.day:hover{border-color:#33507C}
+.day b{display:block;font-size:.76em;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.day i{display:block;font-style:normal;font-size:1.28em;font-weight:800;margin:3px 0 1px;font-variant-numeric:tabular-nums}
+.day span{display:block;font-size:.74em;color:var(--dim)}
+.day.has{border-color:#2C4A6B;background:linear-gradient(180deg,#0F2033,#0C1727)}
+.day.has i{color:var(--cyan)}
+.day.today{border-color:var(--gold);box-shadow:0 0 0 1px #FFC85744,0 0 18px -6px #FFC85788}
+.day.today b{color:var(--gold)}
+.day.sel{outline:2px solid var(--cyan);outline-offset:-2px}
+
+/* ---------- звания ---------- */
+.ranks{display:flex;flex-direction:column;gap:9px}
+.rank{display:flex;align-items:center;gap:14px;padding:13px 16px;border-radius:13px;border:1px solid #1E2A45;
+  background:rgba(13,22,40,.6);opacity:.62}
+.rank.on{opacity:1;border-color:#35507A;background:rgba(16,27,48,.85)}
+.rank.cur{border-color:var(--gold);box-shadow:0 0 22px -10px #FFC857;opacity:1}
+.rank .ic{font-size:1.7em;line-height:1;width:38px;text-align:center}
+.rank .nm{font-weight:800}
+.rank .ds{font-size:.82em;color:var(--dim)}
+.rank .xp{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--dim);font-size:.86em;white-space:nowrap}
+
+/* ---------- магазин ---------- */
+.shop{display:grid;gap:11px;grid-template-columns:repeat(2,1fr)}
+@media(max-width:760px){.shop{grid-template-columns:1fr}}
+.item{display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:13px;border:1px solid #1E2A45;
+  background:rgba(13,22,40,.66)}
+.item .nm{flex:1;min-width:0}
+.item .nm b{display:block;font-weight:700;font-size:.96em}
+.item .nm small{color:var(--dim);font-size:.78em}
+.buy{border:1px solid #7A5A18;background:linear-gradient(180deg,#2A2110,#1A1509);color:var(--gold);
+  font:inherit;font-size:.84em;font-weight:800;padding:9px 13px;border-radius:10px;cursor:pointer;white-space:nowrap}
+.buy:hover:not(:disabled){box-shadow:0 0 16px -6px #FFC857}
+.buy:disabled{opacity:.35;cursor:default;border-color:#3A3A3A;color:#777}
+
+/* ---------- текст правил ---------- */
+.doc{max-width:760px}
+.doc h3{font-size:1.06em;margin:22px 0 8px;color:#EAF2FF}
+.doc p{margin:0 0 10px;color:#D3DEF0}
+.doc ul,.doc ol{margin:0 0 12px;padding-left:22px;color:#D3DEF0}
+.doc li{margin-bottom:5px}
+.doc code{background:#101B31;border:1px solid #22304F;border-radius:5px;padding:1px 6px;font-size:.9em;color:#B9E8FF}
+.q{border-left:3px solid var(--gold);background:rgba(30,40,60,.5);padding:12px 16px;border-radius:8px;margin:12px 0;color:#DCE6F7}
+
+/* ---------- настройки ---------- */
+.field{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.field label{width:190px;color:var(--dim);font-size:.9em}
+.field input[type=text],.field input[type=date]{flex:1;min-width:180px;background:#0D1628;border:1px solid #2A3A5E;
+  border-radius:10px;padding:11px 13px;color:var(--ink);font:inherit;font-size:.92em}
+.field input:focus{outline:none;border-color:var(--cyan)}
+.btn{border:1px solid #35507A;background:linear-gradient(180deg,#16233D,#0F1A2E);color:#EAF2FF;font:inherit;
+  font-size:.88em;font-weight:700;padding:11px 16px;border-radius:10px;cursor:pointer}
+.btn:hover{border-color:#4FD1FF}
+.btn.danger{border-color:#7A3226;color:#FFB4A8}
+.btn.danger:hover{border-color:#FF8A80}
+
+.empty{border:1px dashed #2B3A5A;border-radius:12px;padding:18px 20px;color:var(--dim);font-size:.94em}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#122038;
+  border:1px solid #35507A;border-radius:12px;padding:12px 18px;font-size:.9em;opacity:0;pointer-events:none;
+  transition:.25s;z-index:50;box-shadow:0 12px 40px -12px #000}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.foot{color:#4E5F80;font-size:.76em;text-align:center;margin-top:34px}
+
+:root{color-scheme:dark}
+#neb{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(58% 44% at 10% -6%, #2E4C9E55, transparent 70%),
+    radial-gradient(44% 38% at 90% 4%, #7A3FA844, transparent 70%),
+    radial-gradient(72% 52% at 50% 112%, #10406B55, transparent 72%);}
+</style>
+</head>
+<body>
+<div id="neb"></div>
+<canvas id="sky"></canvas>
+<div id="app"><div id="view"></div></div>
+<div class="toast" id="toast"></div>
+<script>
+window.DATA = {"tasks":[{"c":"T001","n":"Встать по будильнику с первого раза","s":"Дисциплина","p":4,"w":7,"m":5,"x":"—"},{"c":"T002","n":"Зарядка 10 минут","s":"Дисциплина","p":5,"w":7,"m":10,"x":"—"},{"c":"T003","n":"Умыться и почистить зубы без напоминания","s":"Дисциплина","p":3,"w":7,"m":5,"x":"—"},{"c":"T004","n":"Стакан воды после подъёма","s":"Дисциплина","p":2,"w":7,"m":1,"x":"—"},{"c":"T005","n":"Застелить кровать","s":"Дисциплина","p":2,"w":7,"m":2,"x":"—"},{"c":"T006","n":"Позавтракать без телефона","s":"Дисциплина","p":4,"w":7,"m":15,"x":"стоп"},{"c":"T007","n":"Проверить погоду и одеться по ней","s":"Дисциплина","p":3,"w":7,"m":3,"x":"—"},{"c":"T008","n":"Выйти из дома вовремя, без спешки","s":"Дисциплина","p":5,"w":5,"m":10,"x":"—"},{"c":"T009","n":"Записать 3 главных дела на день","s":"Дисциплина","p":4,"w":5,"m":5,"x":"—"},{"c":"T010","n":"Утренняя растяжка 5 минут","s":"Дисциплина","p":4,"w":7,"m":5,"x":"—"},{"c":"T011","n":"Первый час после подъёма без телефона","s":"Дисциплина","p":7,"w":7,"m":60,"x":"стоп"},{"c":"T012","n":"Уроки без напоминания в своё время","s":"Дисциплина","p":8,"w":5,"m":60,"x":"—"},{"c":"T013","n":"Начать уроки в первые 15 минут после дома","s":"Дисциплина","p":7,"w":5,"m":15,"x":"—"},{"c":"T014","n":"Уроки сделаны до ужина","s":"Дисциплина","p":6,"w":5,"m":60,"x":"—"},{"c":"T015","n":"Убрать стол после уроков","s":"Дисциплина","p":3,"w":5,"m":5,"x":"—"},{"c":"T016","n":"Перерыв 10 минут без экрана между уроками","s":"Дисциплина","p":3,"w":5,"m":10,"x":"стоп"},{"c":"T017","n":"Записать домашнее задание в дневник","s":"Дисциплина","p":5,"w":5,"m":5,"x":"—"},{"c":"T018","n":"Разобрать ошибки в контрольной","s":"Дисциплина","p":7,"w":1,"m":20,"x":"—"},{"c":"T019","n":"Подготовить устный ответ вслух","s":"Дисциплина","p":6,"w":1,"m":15,"x":"—"},{"c":"T020","n":"Сделать дело из списка недели сам","s":"Дисциплина","p":7,"w":2,"m":20,"x":"—"},{"c":"T021","n":"Собрать всё для школы с вечера","s":"Дисциплина","p":4,"w":5,"m":10,"x":"—"},{"c":"T022","n":"Кружок или секция без пропусков","s":"Дисциплина","p":6,"w":2,"m":90,"x":"—"},{"c":"T023","n":"Домашние дела по графику","s":"Дисциплина","p":4,"w":3,"m":15,"x":"—"},{"c":"T024","n":"Заполнить журнал за неделю","s":"Дисциплина","p":6,"w":1,"m":10,"x":"—"},{"c":"T025","n":"Экран по таймеру: выключил сам","s":"Дисциплина","p":6,"w":7,"m":60,"x":"контроль"},{"c":"T026","n":"Сдать телефон в 22:00","s":"Дисциплина","p":6,"w":7,"m":5,"x":"контроль"},{"c":"T027","n":"Час перед сном без экрана","s":"Дисциплина","p":7,"w":7,"m":60,"x":"стоп"},{"c":"T028","n":"Телефон не в спальне","s":"Дисциплина","p":5,"w":7,"m":1,"x":"контроль"},{"c":"T029","n":"Отключить уведомления на час","s":"Дисциплина","p":5,"w":7,"m":5,"x":"контроль"},{"c":"T030","n":"Проверить экранное время и записать цифру","s":"Дисциплина","p":5,"w":1,"m":10,"x":"контроль"},{"c":"T031","n":"День без игр и соцсетей","s":"Дисциплина","p":12,"w":1,"m":720,"x":"стоп"},{"c":"T032","n":"Вечерний час без телефона","s":"Дисциплина","p":6,"w":7,"m":60,"x":"стоп"},{"c":"T033","n":"Не брать телефон за столом","s":"Дисциплина","p":4,"w":7,"m":30,"x":"контроль"},{"c":"T034","n":"Доиграть и выйти самому, без скандала","s":"Дисциплина","p":6,"w":7,"m":5,"x":"контроль"},{"c":"T035","n":"Отложить телефон, когда с тобой говорят","s":"Дисциплина","p":4,"w":7,"m":2,"x":"контроль"},{"c":"T036","n":"Почистить зубы утром и вечером","s":"Дисциплина","p":3,"w":7,"m":4,"x":"—"},{"c":"T037","n":"Душ и чистая одежда","s":"Дисциплина","p":2,"w":7,"m":10,"x":"—"},{"c":"T038","n":"Отбой в 22:00","s":"Дисциплина","p":6,"w":7,"m":5,"x":"—"},{"c":"T039","n":"Прогулка 30 минут","s":"Дисциплина","p":5,"w":7,"m":30,"x":"замена"},{"c":"T040","n":"30 приседаний или турник","s":"Дисциплина","p":4,"w":7,"m":5,"x":"—"},{"c":"T041","n":"Следить за осанкой за столом","s":"Дисциплина","p":2,"w":5,"m":60,"x":"—"},{"c":"T042","n":"Проветрить комнату перед сном","s":"Дисциплина","p":2,"w":7,"m":2,"x":"—"},{"c":"T043","n":"Вещи на своих местах","s":"Дисциплина","p":3,"w":7,"m":10,"x":"—"},{"c":"T044","n":"Подмести или пропылесосить пол","s":"Дисциплина","p":4,"w":3,"m":15,"x":"—"},{"c":"T045","n":"Вынести мусор","s":"Дисциплина","p":3,"w":3,"m":5,"x":"—"},{"c":"T046","n":"Протереть пыль","s":"Дисциплина","p":4,"w":1,"m":15,"x":"—"},{"c":"T047","n":"Разобрать полку или ящик","s":"Дисциплина","p":6,"w":1,"m":30,"x":"—"},{"c":"T048","n":"Постирать и сложить свои вещи","s":"Дисциплина","p":5,"w":1,"m":20,"x":"—"},{"c":"T049","n":"Приготовить завтрак себе","s":"Самостоятельность","p":7,"w":3,"m":15,"x":"—"},{"c":"T050","n":"Приготовить блюдо для всей семьи","s":"Самостоятельность","p":12,"w":1,"m":45,"x":"—"},{"c":"T051","n":"Испечь что-то простое","s":"Самостоятельность","p":10,"w":1,"m":60,"x":"—"},{"c":"T052","n":"Помыть посуду после себя","s":"Самостоятельность","p":2,"w":7,"m":5,"x":"—"},{"c":"T053","n":"Помыть посуду за всей семьёй","s":"Самостоятельность","p":5,"w":3,"m":15,"x":"—"},{"c":"T054","n":"Накрыть на стол и убрать со стола","s":"Самостоятельность","p":3,"w":7,"m":10,"x":"—"},{"c":"T055","n":"Составить меню на день","s":"Самостоятельность","p":6,"w":1,"m":15,"x":"—"},{"c":"T056","n":"Сделать чай или кофе родителю","s":"Самостоятельность","p":3,"w":3,"m":5,"x":"—"},{"c":"T057","n":"Приготовить блюдо другой страны","s":"Самостоятельность","p":12,"w":1,"m":60,"x":"—"},{"c":"T058","n":"Купить продукты по списку","s":"Самостоятельность","p":8,"w":1,"m":40,"x":"—"},{"c":"T059","n":"Сравнить цены на 2 позиции","s":"Самостоятельность","p":6,"w":1,"m":10,"x":"—"},{"c":"T060","n":"Вести бюджет карманных денег","s":"Самостоятельность","p":6,"w":1,"m":10,"x":"—"},{"c":"T061","n":"Спланировать покупку: сравнить 3 варианта","s":"Самостоятельность","p":8,"w":1,"m":30,"x":"—"},{"c":"T062","n":"Отложить 10% с карманных","s":"Самостоятельность","p":5,"w":1,"m":2,"x":"—"},{"c":"T063","n":"Найти способ сэкономить или сделать сам","s":"Самостоятельность","p":8,"w":1,"m":30,"x":"—"},{"c":"T064","n":"Продать ненужное (с родителем)","s":"Самостоятельность","p":10,"w":1,"m":60,"x":"—"},{"c":"T065","n":"Посчитать сдачу без калькулятора","s":"Самостоятельность","p":4,"w":1,"m":3,"x":"—"},{"c":"T066","n":"Позвонить бабушке или дедушке","s":"Самостоятельность","p":3,"w":1,"m":10,"x":"—"},{"c":"T067","n":"Договориться о чём-то самому","s":"Самостоятельность","p":10,"w":1,"m":30,"x":"—"},{"c":"T068","n":"Задать вопрос учителю","s":"Самостоятельность","p":6,"w":1,"m":5,"x":"—"},{"c":"T069","n":"Написать письмо или сообщение","s":"Самостоятельность","p":4,"w":1,"m":10,"x":"—"},{"c":"T070","n":"Разобрался с проблемой сам и рассказал","s":"Самостоятельность","p":8,"w":1,"m":30,"x":"—"},{"c":"T071","n":"Помог младшему или другу","s":"Самостоятельность","p":7,"w":1,"m":20,"x":"—"},{"c":"T072","n":"Пригласил друга в гости","s":"Самостоятельность","p":8,"w":1,"m":60,"x":"замена"},{"c":"T073","n":"Извинился первым","s":"Самостоятельность","p":7,"w":1,"m":10,"x":"—"},{"c":"T074","n":"Починил сломанную вещь","s":"Самостоятельность","p":10,"w":1,"m":45,"x":"—"},{"c":"T075","n":"Собрал мебель по инструкции","s":"Самостоятельность","p":12,"w":1,"m":60,"x":"—"},{"c":"T076","n":"Заменил батарейку или лампочку","s":"Самостоятельность","p":4,"w":1,"m":5,"x":"—"},{"c":"T077","n":"Пришил пуговицу","s":"Самостоятельность","p":6,"w":1,"m":15,"x":"—"},{"c":"T078","n":"Собрал модель по схеме","s":"Самостоятельность","p":10,"w":1,"m":60,"x":"замена"},{"c":"T079","n":"Разобрал устройство и объяснил, как работает","s":"Самостоятельность","p":12,"w":1,"m":60,"x":"замена"},{"c":"T080","n":"Почистил и смазал велосипед","s":"Самостоятельность","p":8,"w":1,"m":40,"x":"—"},{"c":"T081","n":"Чтение 20 минут","s":"Познание","p":6,"w":7,"m":20,"x":"замена"},{"c":"T082","n":"Чтение 40 минут","s":"Познание","p":9,"w":3,"m":40,"x":"замена"},{"c":"T083","n":"Дочитать книгу целиком (бонус)","s":"Познание","p":20,"w":1,"m":0,"x":"замена"},{"c":"T084","n":"Пересказать прочитанное","s":"Познание","p":6,"w":1,"m":10,"x":"—"},{"c":"T085","n":"Выписать 5 новых слов и объяснить","s":"Познание","p":5,"w":2,"m":10,"x":"—"},{"c":"T086","n":"Прочитать статью и рассказать главное","s":"Познание","p":6,"w":1,"m":15,"x":"—"},{"c":"T087","n":"Выучить стихотворение","s":"Познание","p":8,"w":1,"m":20,"x":"—"},{"c":"T088","n":"Письмо или дневник 10 минут","s":"Познание","p":5,"w":7,"m":10,"x":"замена"},{"c":"T089","n":"Английский 15 минут","s":"Познание","p":5,"w":5,"m":15,"x":"—"},{"c":"T090","n":"Посмотреть видео на английском с субтитрами","s":"Познание","p":6,"w":2,"m":15,"x":"—"},{"c":"T091","n":"Выучить 5 новых слов на английском","s":"Познание","p":4,"w":5,"m":10,"x":"—"},{"c":"T092","n":"Опыт или эксперимент своими руками","s":"Познание","p":10,"w":1,"m":40,"x":"замена"},{"c":"T093","n":"Мини-исследование: вопрос → 3 факта → вывод","s":"Познание","p":12,"w":1,"m":45,"x":"замена"},{"c":"T094","n":"Измерить что-то вокруг (высота, скорость, вес)","s":"Познание","p":8,"w":1,"m":30,"x":"—"},{"c":"T095","n":"Собрать действующую модель (мост, катапульта)","s":"Познание","p":12,"w":1,"m":90,"x":"замена"},{"c":"T096","n":"Программирование 30 минут","s":"Познание","p":8,"w":3,"m":30,"x":"—"},{"c":"T097","n":"Дневник погоды: 7 дней наблюдений","s":"Познание","p":6,"w":1,"m":10,"x":"—"},{"c":"T098","n":"Вырастить растение или кристалл","s":"Познание","p":10,"w":1,"m":20,"x":"замена"},{"c":"T099","n":"Рассмотреть 5 объектов в лупу или микроскоп","s":"Познание","p":7,"w":1,"m":20,"x":"замена"},{"c":"T100","n":"Решить задачу на логику или олимпиадную","s":"Познание","p":7,"w":2,"m":20,"x":"—"},{"c":"T101","n":"Математическая разминка 10 минут","s":"Познание","p":4,"w":5,"m":10,"x":"—"},{"c":"T102","n":"Составить таблицу или график по своим данным","s":"Познание","p":9,"w":1,"m":40,"x":"—"},{"c":"T103","n":"Записать вопрос дня","s":"Познание","p":4,"w":7,"m":5,"x":"—"},{"c":"T104","n":"Новый факт за ужином","s":"Познание","p":3,"w":7,"m":5,"x":"—"},{"c":"T105","n":"Задать 3 «взрослых» вопроса и записать ответы","s":"Познание","p":6,"w":1,"m":15,"x":"—"},{"c":"T106","n":"Найти на карте 5 мест и рассказать о них","s":"Познание","p":7,"w":1,"m":20,"x":"замена"},{"c":"T107","n":"Спланировать маршрут поездки","s":"Познание","p":9,"w":1,"m":40,"x":"—"},{"c":"T108","n":"Экскурсия или музей с заметками","s":"Познание","p":15,"w":1,"m":120,"x":"замена"},{"c":"T109","n":"Прогулка-наблюдение 20 минут","s":"Познание","p":5,"w":3,"m":20,"x":"замена"},{"c":"T110","n":"Определить 5 птиц или деревьев","s":"Познание","p":7,"w":1,"m":30,"x":"замена"},{"c":"T111","n":"Собрать гербарий или коллекцию","s":"Познание","p":8,"w":1,"m":45,"x":"замена"},{"c":"T112","n":"Фотоохота: 10 кадров на тему","s":"Познание","p":6,"w":1,"m":30,"x":"замена"},{"c":"T113","n":"Взять интервью у взрослого о его профессии","s":"Познание","p":10,"w":1,"m":45,"x":"—"},{"c":"T114","n":"Документальный фильм с разбором","s":"Познание","p":8,"w":1,"m":40,"x":"—"},{"c":"T115","n":"Послушать лекцию или подкаст и пересказать","s":"Познание","p":7,"w":2,"m":20,"x":"—"},{"c":"T116","n":"Научил кого-то тому, что умеет сам","s":"Познание","p":12,"w":1,"m":30,"x":"—"},{"c":"T117","n":"Рисунок или скетч 20 минут","s":"Познание","p":6,"w":3,"m":20,"x":"замена"},{"c":"T118","n":"Музыка: инструмент 20 минут","s":"Познание","p":7,"w":3,"m":20,"x":"замена"},{"c":"T119","n":"Своя история или комикс","s":"Познание","p":8,"w":1,"m":40,"x":"замена"},{"c":"T120","n":"Поделка из подручного материала","s":"Познание","p":8,"w":1,"m":40,"x":"замена"},{"c":"T121","n":"Сценарий или минутное видео","s":"Познание","p":9,"w":1,"m":60,"x":"—"},{"c":"T122","n":"Оригами или аппликация","s":"Познание","p":5,"w":1,"m":20,"x":"замена"},{"c":"T123","n":"Настольная игра с семьёй","s":"Познание","p":8,"w":2,"m":45,"x":"замена"},{"c":"T124","n":"Шахматы или шашки","s":"Познание","p":6,"w":3,"m":20,"x":"замена"},{"c":"T125","n":"Командная игра во дворе","s":"Познание","p":8,"w":3,"m":60,"x":"замена"},{"c":"T126","n":"Готовить вместе с кем-то","s":"Познание","p":6,"w":1,"m":45,"x":"замена"},{"c":"T127","n":"Помог с уроками брату или другу","s":"Познание","p":8,"w":1,"m":20,"x":"—"},{"c":"T128","n":"Своя задача, придуманная самому","s":"Познание","p":6,"w":1,"m":20,"x":"—"}],"rewards":[{"n":"Выбрать фильм на семейный вечер","t":"Привилегия","p":20},{"n":"Выбрать музыку в машине","t":"Привилегия","p":25},{"n":"Любимая еда на ужин","t":"Привилегия","p":40},{"n":"Выбрать семейный ужин в будни","t":"Привилегия","p":40},{"n":"«Звезда недели»: меню субботы","t":"Привилегия","p":45},{"n":"Лечь на 30 минут позже в пятницу","t":"Привилегия","p":45},{"n":"Выбрать маршрут прогулки","t":"Привилегия","p":50},{"n":"Пропустить одно домашнее дело","t":"Привилегия","p":60},{"n":"Час один на один с папой или мамой","t":"Впечатление","p":60},{"n":"Поездка к бабушке на целый день","t":"Впечатление","p":60},{"n":"Продать старое и добавить в копилку","t":"Накопление","p":60},{"n":"Настольный турнир всей семьёй","t":"Совместное","p":60},{"n":"Час личного времени без вопросов","t":"Привилегия","p":70},{"n":"Позже лечь на час в субботу","t":"Привилегия","p":70},{"n":"Выбрать, куда поедем в выходные","t":"Привилегия","p":80},{"n":"Свой час на кухне: готовлю что хочу","t":"Привилегия","p":80},{"n":"Комикс","t":"Вещь","p":80},{"n":"Приготовить ужин вместе с папой","t":"Совместное","p":80},{"n":"День без домашних дел","t":"Привилегия","p":90},{"n":"Право пригласить друга без предупреждения","t":"Привилегия","p":90},{"n":"Велопрогулка на два часа","t":"Впечатление","p":90},{"n":"Карта мира на стену","t":"Вещь","p":90},{"n":"Свой вклад в семейное дело (500 ₽)","t":"Накопление","p":90},{"n":"Час Minecraft вместе с папой","t":"Цифровая","p":90},{"n":"Комната на 3 дня без проверки","t":"Привилегия","p":100},{"n":"Фонарик, лупа или бинокль","t":"Вещь","p":100},{"n":"Скетчбук и краски","t":"Вещь","p":100},{"n":"Копилка на подарок маме","t":"Накопление","p":100},{"n":"Собрать что-то вместе с папой","t":"Совместное","p":100},{"n":"Выбрать постер или обои в комнату","t":"Привилегия","p":120},{"n":"Новая книга","t":"Вещь","p":120},{"n":"Спортинвентарь: мяч, скакалка, ракетки","t":"Вещь","p":120},{"n":"Свой проект в Scratch или своя игра","t":"Цифровая","p":120},{"n":"Бассейн","t":"Впечатление","p":140},{"n":"Батут или скалодром","t":"Впечатление","p":140},{"n":"Своё правило на неделю","t":"Привилегия","p":150},{"n":"Пикник с друзьями","t":"Впечатление","p":150},{"n":"Глобус","t":"Вещь","p":150},{"n":"Взнос в копилку большой цели","t":"Накопление","p":150},{"n":"Семейный поход в музей","t":"Совместное","p":150},{"n":"Рыбалка с папой","t":"Впечатление","p":160},{"n":"Ночёвка у друга","t":"Впечатление","p":160},{"n":"Кино в кинотеатре","t":"Впечатление","p":180},{"n":"Пробное занятие в новой секции","t":"Впечатление","p":180},{"n":"Концерт или спектакль","t":"Впечатление","p":200},{"n":"Вклад «на мечту» 50/50","t":"Накопление","p":200},{"n":"Свой бюджет на месяц","t":"Накопление","p":200},{"n":"Подписка на познавательный курс","t":"Цифровая","p":200},{"n":"Мастер-класс: роботы, гончарка, столярка","t":"Впечатление","p":220},{"n":"День «делаем что хочешь»","t":"Впечатление","p":250},{"n":"Набор для опытов","t":"Вещь","p":250},{"n":"Экспедиция выходного дня","t":"Впечатление","p":300},{"n":"Настольная игра","t":"Вещь","p":300},{"n":"Аквапарк","t":"Впечатление","p":320},{"n":"Парк аттракционов","t":"Впечатление","p":350},{"n":"Набор конструктора до 1500 ₽","t":"Вещь","p":400},{"n":"Поход с палаткой на два дня","t":"Впечатление","p":450},{"n":"Телескоп (копилка 50/50)","t":"Накопление","p":800},{"n":"Велосипед (копилка 50/50)","t":"Накопление","p":1200}],"ranks":[{"n":"Стажёр","i":"🛰","xp":0,"r":"Доступ к магазину. Право оспорить любой минус"},{"n":"Пилот","i":"🚀","xp":200,"r":"+1 страховка серии. Своё задание"},{"n":"Штурман","i":"🧭","xp":600,"r":"Можно предлагать задания и свою цену"},{"n":"Капитан","i":"👨‍🚀","xp":1200,"r":"Ведёшь совет экипажа"},{"n":"Командор","i":"🌟","xp":2100,"r":"Можно менять правила и награды"},{"n":"Хранитель орбиты","i":"🪐","xp":3300,"r":"Считаешь итоги сам"},{"n":"Легенда космоса","i":"🌌","xp":5000,"r":"Правило для следующей экспедиции"}],"starter":["T001","T002","T003","T005","T006","T009","T012","T015","T025","T026","T052","T049","T054","T056","T081","T089","T103","T104","T109","T093"]};
+</script>
+<script>
+/* звёздное небо */
+(function(){
+  var c=document.getElementById('sky'), x=c.getContext('2d'), stars=[], W=0, H=0, t=0;
+  function resize(){ W=c.width=window.innerWidth; H=c.height=window.innerHeight; }
+  function make(){
+    stars=[];
+    var n = Math.min(140, Math.round(W*H/16000));
+    for(var i=0;i<n;i++) stars.push({x:Math.random()*W, y:Math.random()*H,
+      r:Math.random()*1.3+0.35, a:Math.random()*0.55+0.2, s:Math.random()*0.045+0.01});
+  }
+  function draw(){
+    t+=0.016; x.clearRect(0,0,W,H);
+    for(var i=0;i<stars.length;i++){
+      var s=stars[i], al=s.a*(0.6+0.4*Math.sin(t*s.s*9+i));
+      x.beginPath(); x.arc(s.x,s.y,s.r,0,6.2832);
+      x.fillStyle='rgba(255,255,255,'+al.toFixed(2)+')'; x.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize', function(){ resize(); make(); });
+  resize(); make(); draw();
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+
+  var D = window.DATA || { tasks: [], rewards: [], ranks: [], starter: [] };
+  var BY = {};
+  D.tasks.forEach(function (t) { BY[t.c] = t; });
+
+  var SPHERES = ["Дисциплина", "Самостоятельность", "Познание"];
+  var ICON = { "Дисциплина": "🛡", "Самостоятельность": "🧭", "Познание": "🔭" };
+  var WD = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+  var MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+  var LS = "kompas.v2";
+
+  /* ---------------- даты ---------------- */
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function key(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function parse(k) { var p = String(k).split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function todayKey() { return key(new Date()); }
+  function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+  function monday(d) { var c = new Date(d.getFullYear(), d.getMonth(), d.getDate()); var w = c.getDay() || 7; c.setDate(c.getDate() - w + 1); return c; }
+  function isoWeek(d) {
+    var t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    var dn = t.getUTCDay() || 7; t.setUTCDate(t.getUTCDate() + 4 - dn);
+    var ys = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+    return t.getUTCFullYear() + "-W" + pad(Math.ceil(((t - ys) / 86400000 + 1) / 7));
+  }
+  function daysBetween(a, b) { return Math.round((new Date(b.getFullYear(), b.getMonth(), b.getDate()) - new Date(a.getFullYear(), a.getMonth(), a.getDate())) / 86400000); }
+  function short(d) { return d.getDate() + " " + MONTHS[d.getMonth()].slice(0, 3); }
+  function round1(n) { return Math.round(n * 10) / 10; }
+
+  /* ---------------- состояние ---------------- */
+  function defaults() {
+    return { name: "", start: todayKey(), set: D.starter.slice(), days: {}, purchases: [], goal: { name: "Телескоп", cost: 8000, saved: 0 }, view: null };
+  }
+  var CAN_SAVE = (function () {
+    try { localStorage.setItem("__kp", "1"); localStorage.removeItem("__kp"); return true; } catch (e) { return false; }
+  })();
+  var state = null;
+  function load() {
+    try {
+      var raw = localStorage.getItem(LS);
+      if (raw) {
+        var s = JSON.parse(raw);
+        var d = defaults();
+        for (var k in d) if (!(k in s)) s[k] = d[k];
+        if (!Array.isArray(s.set) || !s.set.length) s.set = D.starter.slice();
+        return s;
+      }
+    } catch (e) { }
+    return defaults();
+  }
+  function save() {
+    try { localStorage.setItem(LS, JSON.stringify(state)); } catch (e) { }
+  }
+
+  /* ---------------- расчёт ---------------- */
+  function compute(st) {
+    var set = new Set(st.set.filter(function (c) { return BY[c]; }));
+    var items = st.set.map(function (c) { return BY[c]; }).filter(Boolean);
+    var used = {};
+    var keys = Object.keys(st.days).sort();
+    var rows = {};
+
+    keys.forEach(function (k) {
+      var day = st.days[k] || {};
+      var marks = day.marks || {};
+      var wk = isoWeek(parse(k));
+      var pts = 0, done = 0, total = 0;
+      var credit = {};
+      Object.keys(marks).forEach(function (code) {
+        if (!set.has(code)) return;
+        var t = BY[code];
+        var mult = marks[code];
+        total++;
+        credit[code] = 0;
+        if (mult > 0) {
+          done++;
+          var uk = wk + "|" + code;
+          var norm = t.w || 1;
+          var already = used[uk] || 0;
+          var take = Math.max(0, Math.min(mult, norm - already));
+          used[uk] = already + take;
+          var v = t.p * take;
+          credit[code] = round1(v);
+          pts += v;
+        }
+      });
+      var pen = Math.min(15, Math.max(0, +(day.penalty || 0)));
+      rows[k] = { k: k, points: round1(Math.max(0, pts - pen)), done: done, total: total, marks: marks, credit: credit, penalty: pen };
+    });
+
+    // недели
+    var weeks = {}, wlist = [];
+    keys.forEach(function (k) {
+      var r = rows[k];
+      var wk = isoWeek(parse(k));
+      if (!weeks[wk]) {
+        var mon = monday(parse(k));
+        weeks[wk] = { k: wk, mon: mon, sun: addDays(mon, 6), days: [], points: 0, plan: 0, pct: 0 };
+        wlist.push(weeks[wk]);
+      }
+      weeks[wk].days.push(r);
+      weeks[wk].points = round1(weeks[wk].points + r.points);
+    });
+    wlist.forEach(function (w) {
+      var codes = {};
+      w.days.forEach(function (r) { Object.keys(r.marks).forEach(function (c) { if (set.has(c)) codes[c] = 1; }); });
+      var plan = 0;
+      Object.keys(codes).forEach(function (c) { plan += BY[c].p * (BY[c].w || 1); });
+      w.plan = round1(plan);
+      w.pct = plan > 0 ? w.points / plan : 0;
+    });
+
+    var xp = 0;
+    keys.forEach(function (k) { xp += rows[k].points; });
+    xp = round1(xp);
+
+    // цикл
+    var startD = parse(st.start);
+    var cyc = Math.max(1, Math.floor(daysBetween(startD, new Date()) / 28) + 1);
+    var cycPts = 0, dayOfCycle = daysBetween(startD, new Date()) + 1;
+    keys.forEach(function (k) {
+      var idx = Math.floor(daysBetween(startD, parse(k)) / 28) + 1;
+      if (idx === cyc) cycPts += rows[k].points;
+    });
+
+    // звание
+    var rank = D.ranks[0], next = null;
+    D.ranks.forEach(function (r) { if (xp >= r.xp) rank = r; });
+    for (var i = 0; i < D.ranks.length; i++) if (D.ranks[i].xp > xp) { next = D.ranks[i]; break; }
+    var prog = next ? (xp - rank.xp) / (next.xp - rank.xp) : 1;
+
+    // кошелёк
+    var spent = 0;
+    st.purchases.forEach(function (p) { spent += +p.price || 0; });
+    var reserved = +(st.goal && st.goal.saved) || 0;
+    var free = round1(xp - spent - reserved);
+    var available = round1(xp - spent);
+
+    // серия
+    var streak = 0, cursor = null;
+    var ordered = keys.slice().sort().reverse();
+    var tk = todayKey();
+    for (var j = 0; j < ordered.length; j++) {
+      var rr = rows[ordered[j]];
+      if (!rr || rr.total === 0 || rr.done / rr.total < 0.5) continue;
+      var gap = daysBetween(parse(ordered[j]), parse(tk));
+      if (cursor === null) { if (gap > 1) break; cursor = ordered[j]; streak = 1; }
+      else if (daysBetween(parse(ordered[j]), parse(cursor)) === 1) { cursor = ordered[j]; streak++; }
+      else break;
+    }
+
+    // сферы за цикл
+    var sphere = { "Дисциплина": 0, "Самостоятельность": 0, "Познание": 0 };
+    keys.forEach(function (k) {
+      if (Math.floor(daysBetween(startD, parse(k)) / 28) + 1 !== cyc) return;
+      var r = rows[k];
+      Object.keys(r.credit).forEach(function (c) {
+        var t = BY[c];
+        if (t && sphere[t.s] !== undefined) sphere[t.s] = round1(sphere[t.s] + r.credit[c]);
+      });
+    });
+
+    // план набора
+    var setPlan = 0, setMin = 0, anti = 0, sh = 0, daily = 0;
+    var bySp = {};
+    SPHERES.forEach(function (s) { bySp[s] = { n: 0, p: 0 }; });
+    items.forEach(function (t) {
+      setPlan += t.p * (t.w || 1);
+      setMin += (t.m || 0) * (t.w || 1);
+      if (t.x && t.x !== "—") anti++;
+      if (t.m > 0 && t.m < 15) sh++;
+      if ((t.w || 1) >= 7) daily++;
+      bySp[t.s].n++; bySp[t.s].p += t.p * (t.w || 1);
+    });
+
+    return {
+      rows: rows, weeks: wlist, weekMap: weeks, xp: xp, rank: rank, next: next, prog: prog,
+      spent: spent, free: free, available: available, reserved: reserved,
+      streak: streak, cycle: cyc, cyclePoints: cycPts, dayOfCycle: Math.max(1, dayOfCycle),
+      sphere: sphere, items: items, setPlan: round1(setPlan), setMin: setMin, anti: anti, short: sh, daily: daily, bySp: bySp
+    };
+  }
+
+  /* ---------------- утилиты UI ---------------- */
+  function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  function el(id) { return document.getElementById(id); }
+  function toast(msg) {
+    var t = el("toast");
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.add("on");
+    clearTimeout(t._h);
+    t._h = setTimeout(function () { t.classList.remove("on"); }, 2200);
+  }
+  function bar(pct, cls) {
+    var w = Math.max(0, Math.min(100, Math.round(pct * 100)));
+    return '<div class="bar ' + (cls || "") + '"><i style="width:' + w + '%"></i></div>';
+  }
+
+  /* ---------------- экраны ---------------- */
+  var tab = "today";
+
+  function viewKey() {
+    if (state.view && state.days[state.view] !== undefined) return state.view;
+    if (state.view) return state.view;
+    return todayKey();
+  }
+
+  function header(m) {
+    var html = '<div class="top"><div class="logo">🚀</div><div>' +
+      '<div class="title">Компас · мостик</div>' +
+      '<div class="sub">' + (state.name ? esc(state.name) : "капитан") + ' · ' + short(new Date()) + '</div></div>' +
+      '<div class="chips">' +
+      '<span class="chip gold">🏆 ' + esc(m.rank.n) + '</span>' +
+      '<span class="chip cyan">🛰 экспедиция ' + m.cycle + ' · день ' + m.dayOfCycle + '/28</span>' +
+      (m.streak > 0 ? '<span class="chip fire">🔥 серия ' + m.streak + '</span>' : '') +
+      '<button class="chip" id="gear" title="Настройки" style="cursor:pointer">⚙️</button>' +
+      '</div></div>';
+    return html + tabs();
+  }
+
+  function tabs() {
+    var list = [["today", "⚡ Сегодня"], ["week", "🗓 Неделя"], ["ranks", "🛰 Звания"], ["shop", "🛒 Магазин"], ["set", "🧺 Расписание"], ["rules", "📖 Правила"]];
+    if (tab === "settings") list.push(["settings", "⚙️ Настройки"]);
+    return '<div class="tabs">' + list.map(function (t) {
+      return '<button class="tab ' + (tab === t[0] ? "on" : "") + '" data-tab="' + t[0] + '">' + t[1] + '</button>';
+    }).join("") + '</div>';
+  }
+
+  function screenToday(m) {
+    var k = viewKey();
+    var row = m.rows[k];
+    var isToday = k === todayKey();
+    var d = parse(k);
+    var html = "";
+    if (!isToday) {
+      html += '<button class="btn" data-tab="today" data-today="1" style="margin-bottom:12px">← к сегодняшнему дню</button>';
+    }
+    var done = row ? row.done : 0, total = m.items.length;
+    html += '<div class="cards">' +
+      '<div class="card gold"><div class="lbl">' + (isToday ? "Сегодня" : WD[(d.getDay() + 6) % 7] + ", " + short(d)) + '</div>' +
+      '<div class="big gold">' + (row ? row.points : 0) + '</div><div class="note">' + done + ' из ' + total + ' заданий</div></div>' +
+      '<div class="card"><div class="lbl">Неделя</div><div class="big cyan">' + (weekOf(m, k) ? weekOf(m, k).points : 0) + '</div>' +
+      '<div class="note">' + (weekOf(m, k) ? Math.round(weekOf(m, k).pct * 100) + "% плана" : "—") + '</div>' +
+      (weekOf(m, k) ? bar(weekOf(m, k).pct) : "") + '</div>' +
+      '<div class="card violet"><div class="lbl">Опыт</div><div class="big violet">' + m.xp + '</div>' +
+      '<div class="note">' + (m.next ? "до «" + esc(m.next.n) + "» " + Math.max(0, m.next.xp - m.xp) : "максимум") + '</div>' +
+      bar(m.prog, "gold") + '</div>' +
+      '<div class="card"><div class="lbl">Кристаллы</div><div class="big green">' + m.free + '</div><div class="note">можно тратить</div></div>' +
+      '</div>';
+
+    if (!m.items.length) {
+      return html + '<div class="empty">Сначала выбери задания во вкладке «Расписание».</div>';
+    }
+
+    SPHERES.forEach(function (sp) {
+      var list = m.items.filter(function (t) { return t.s === sp; });
+      if (!list.length) return;
+      var sum = 0;
+      list.forEach(function (t) { if (row && row.credit[t.c]) sum += row.credit[t.c]; });
+      html += '<div class="group"><div class="gh">' + ICON[sp] + ' ' + sp + '<span class="sum">' + round1(sum) + ' 💎</span></div>';
+      list.forEach(function (t) {
+        var mult = row && row.marks[t.c] ? row.marks[t.c] : 0;
+        var credit = row && row.credit[t.c] ? row.credit[t.c] : 0;
+        var cls = mult >= 1 ? "done" : mult > 0 ? "half" : "";
+        var sign = mult > 0 ? (credit > 0 ? "+" + credit : "сверх нормы") : "+" + t.p;
+        html += '<button class="task ' + cls + '" data-task="' + t.c + '">' +
+          '<span class="box">' + (mult >= 1 ? "✓" : mult > 0 ? "½" : "") + '</span>' +
+          '<span class="nm">' + esc(t.n) + '</span>' +
+          '<span class="pt">' + sign + '</span></button>';
+      });
+      html += '</div>';
+    });
+
+    html += '<div class="note" style="margin-top:14px">Нажми на задание: один раз — сделал, второй — половина, третий — снять.</div>';
+    return html;
+  }
+
+  function weekOf(m, k) {
+    var wk = isoWeek(parse(k));
+    return m.weekMap[wk] || null;
+  }
+
+  function screenWeek(m) {
+    var base = monday(parse(viewKey()));
+    var html = '<div class="week">';
+    for (var i = 0; i < 7; i++) {
+      var d = addDays(base, i), k = key(d), r = m.rows[k];
+      var cls = ["day", r ? "has" : "", k === todayKey() ? "today" : "", k === viewKey() ? "sel" : ""].join(" ");
+      html += '<button class="' + cls + '" data-day="' + k + '"><b>' + WD[i] + '</b><i>' + (r ? r.points : "—") + '</i><span>' + d.getDate() + '</span></button>';
+    }
+    html += '</div>';
+    var w = m.weekMap[isoWeek(base)];
+    if (w) {
+      html += '<h2 class="sec">Итог недели</h2><div class="cards">' +
+        '<div class="card"><div class="lbl">Кристаллы</div><div class="big cyan">' + w.points + '</div><div class="note">из ' + Math.round(w.plan) + ' плана</div>' + bar(w.pct) + '</div>' +
+        '<div class="card gold"><div class="lbl">Выполнение</div><div class="big gold">' + Math.round(w.pct * 100) + '%</div><div class="note">' + (w.pct >= 0.9 ? "отличная неделя" : w.pct >= 0.75 ? "хорошая неделя" : "есть куда расти") + '</div></div>' +
+        '</div>';
+    }
+    return html;
+  }
+
+  function screenRanks(m) {
+    var html = '<h2 class="sec">Путь капитана</h2><div class="ranks">';
+    D.ranks.forEach(function (r) {
+      var on = m.xp >= r.xp;
+      var cur = m.rank.n === r.n;
+      html += '<div class="rank ' + (on ? "on" : "") + ' ' + (cur ? "cur" : "") + '">' +
+        '<div class="ic">' + r.i + '</div><div><div class="nm">' + esc(r.n) + (cur ? " ← ты здесь" : "") + '</div>' +
+        '<div class="ds">' + esc(r.r) + '</div></div><div class="xp">' + r.xp + '</div></div>';
+    });
+    html += '</div>';
+    html += '<h2 class="sec">Прогноз</h2>';
+    var plan = m.setPlan || 493;
+    var pace = Math.max(1, Math.round(plan * 0.65));
+    html += '<div class="note" style="margin-bottom:10px">Если делать около 65% плана — это примерно ' + pace + ' 💎 в неделю.</div><div class="shop">';
+    D.ranks.forEach(function (r) {
+      if (r.xp <= m.xp) return;
+      var w = Math.ceil((r.xp - m.xp) / pace);
+      var d = addDays(new Date(), w * 7);
+      html += '<div class="item"><div class="nm"><b>' + r.i + ' ' + esc(r.n) + '</b><small>через ' + w + ' нед. · ' + short(d) + ' ' + d.getFullYear() + '</small></div></div>';
+    });
+    return html + '</div>';
+  }
+
+  function screenShop(m) {
+    var html = '<h2 class="sec">Магазин</h2><div class="note" style="margin-bottom:12px">У тебя ' + m.free + ' 💎. Покупка не отнимает опыт — только кристаллы.</div><div class="shop">';
+    D.rewards.forEach(function (r) {
+      var can = m.free >= r.p;
+      html += '<div class="item"><div class="nm"><b>' + esc(r.n) + '</b><small>' + esc(r.t) + '</small></div>' +
+        '<button class="buy" data-buy="' + esc(r.n) + '" data-price="' + r.p + '" ' + (can ? "" : "disabled") + '>' + r.p + ' 💎</button></div>';
+    });
+    html += '</div>';
+    if (state.purchases.length) {
+      html += '<h2 class="sec">Что куплено</h2><div class="shop">';
+      state.purchases.slice().reverse().forEach(function (p) {
+        html += '<div class="item"><div class="nm"><b>' + esc(p.name) + '</b><small>' + p.date + '</small></div><div class="note">−' + p.price + ' 💎</div></div>';
+      });
+      html += '</div>';
+    }
+    return html;
+  }
+
+  function screenSet(m) {
+    var total = D.tasks.length;
+    var html = '<h2 class="sec">Расписание</h2>' +
+      '<div class="note" style="margin-bottom:12px">Отметь 15–20 заданий — они попадут в день. Сейчас выбрано <b>' + m.items.length + '</b> из ' + total + '.</div>' +
+      '<div class="cards" style="margin-bottom:16px">' +
+      '<div class="card"><div class="lbl">План недели</div><div class="big cyan">' + Math.round(m.setPlan) + '</div><div class="note">кристаллов максимум</div></div>' +
+      '<div class="card"><div class="lbl">Время</div><div class="big">' + Math.round(m.setMin / 60 * 10) / 10 + '</div><div class="note">часов в неделю</div></div>' +
+      '<div class="card violet"><div class="lbl">Против экрана</div><div class="big violet">' + m.anti + '</div><div class="note">забирают время у телефона</div></div>' +
+      '<div class="card gold"><div class="lbl">Проверки</div><div class="big gold">' + checkScore(m) + '/4</div><div class="note">' + checkHint(m) + '</div></div>' +
+      '</div>';
+
+    SPHERES.forEach(function (sp) {
+      html += '<div class="group"><div class="gh">' + ICON[sp] + ' ' + sp + '<span class="sum">' + m.bySp[sp].n + ' шт · ' + Math.round(m.bySp[sp].p) + ' 💎</span></div>';
+      D.tasks.filter(function (t) { return t.s === sp; }).forEach(function (t) {
+        var on = state.set.indexOf(t.c) >= 0;
+        html += '<button class="task ' + (on ? "done" : "") + '" data-pick="' + t.c + '">' +
+          '<span class="box">' + (on ? "✓" : "") + '</span><span class="nm">' + esc(t.n) + '</span>' +
+          '<span class="pt">' + t.p + ' 💎</span></button>';
+      });
+      html += '</div>';
+    });
+    return html;
+  }
+
+  function checkScore(m) {
+    var s = 0;
+    if (m.items.length >= 15 && m.items.length <= 20) s++;
+    if (SPHERES.every(function (x) { return m.bySp[x].n > 0; })) s++;
+    if (m.anti >= 6) s++;
+    if (m.short >= 8) s++;
+    return s;
+  }
+  function checkHint(m) {
+    var out = [];
+    if (!(m.items.length >= 15 && m.items.length <= 20)) out.push("15–20 заданий");
+    if (!SPHERES.every(function (x) { return m.bySp[x].n > 0; })) out.push("все сферы");
+    if (m.anti < 6) out.push("6 против экрана");
+    if (m.short < 8) out.push("8 коротких");
+    return out.length ? out.join(", ") : "набор сбалансирован";
+  }
+
+  function screenRules() {
+    return '<div class="doc">' +
+      '<h3>Ты — капитан корабля «Компас»</h3>' +
+      '<p>Всё, что ты делаешь за день, приносит 💎 <b>кристаллы</b>. Кристаллы становятся ⭐ <b>опытом</b>, опыт — 🛰 <b>званием</b>.</p>' +
+      '<h3>Как отмечать</h3>' +
+      '<p>Нажми на задание в списке: <b>первый раз</b> — сделал, <b>второй</b> — сделал половину, <b>третий</b> — снять отметку. Всё сохраняется само.</p>' +
+      '<p>Не трогай то, чего не было. Пустая галочка — это нормально, это не минус.</p>' +
+      '<h3>Три слова</h3><ul>' +
+      '<li>💎 <b>Кристаллы</b> — как монетки, тратятся в магазине.</li>' +
+      '<li>⭐ <b>Опыт</b> — счёт навсегда, из него растёт звание.</li>' +
+      '<li>🛰 <b>Звание</b> — даёт права: выбирать задания, вести совет.</li></ul>' +
+      '<div class="q">Сделал день на 69 → получил 69 опыта и 69 кристаллов. Потратил 50 → опыт остался 69, а кристаллов стало 19.</div>' +
+      '<h3>Пример дня</h3>' +
+      '<p>Вторник: встал (4), зарядка (5), гигиена (3), кровать (2), завтрак (7), без телефона за едой (4), три дела (4), уроки (8), уборка стола (3), посуда (2), чтение (6), английский (5), вопрос дня (4), факт за ужином (3), телефон в 22:00 (6).</p>' +
+      '<p><b>16 заданий = 69 кристаллов.</b> В списке 20, а сделано 16 — и это отличный день.</p>' +
+      '<h3>Почему иногда «сверх нормы»</h3>' +
+      '<p>У задания есть норма — сколько раз в неделю оно бывает. «Мини-исследование» — раз в неделю. Отметишь его в понедельник, во вторник оно даст 0. Это не жадность: иначе можно нажать одно задание семь раз и стать миллионером.</p>' +
+      '<h3>Что делать, если…</h3><ul>' +
+      '<li><b>…заболел?</b> Ничего. Опыт и звание остаются.</li>' +
+      '<li><b>…не понял, как посчитали?</b> Скажи взрослому — у тебя есть право оспорить.</li>' +
+      '<li><b>…хочу новое задание?</b> Придумай и предложи на совете.</li>' +
+      '<li><b>…не хочу ничего делать?</b> Это твой выбор. Но и звание не растёт — оно растёт только от дел.</li></ul>' +
+      '<h3>Что нельзя купить</h3><p>Еду, сон, объятия, «хорошее настроение», прощение и то, что обещали просто так.</p>' +
+      '</div>';
+  }
+
+  function screenSettings(m) {
+    return '<h2 class="sec">Настройки</h2>' +
+      '<div class="field"><label>Имя капитана</label><input type="text" id="f-name" value="' + esc(state.name) + '" placeholder="[Имя]"></div>' +
+      '<div class="field"><label>Старт экспедиции</label><input type="date" id="f-start" value="' + esc(state.start) + '"></div>' +
+      '<div class="note" style="margin:6px 0 18px">Экспедиция — 28 дней. От даты старта считаются номер экспедиции и день внутри неё.</div>' +
+      '<h2 class="sec">Данные</h2>' +
+      '<div class="field" style="gap:10px;flex-wrap:wrap">' +
+      '<button class="btn" id="btn-export">Скачать копию (JSON)</button>' +
+      '<button class="btn" id="btn-import">Загрузить копию</button>' +
+      '<input type="file" id="file-import" accept=".json" style="display:none">' +
+      '</div>' +
+      '<div class="note" style="margin:6px 0 18px">Данные хранятся в этом браузере. Чтобы перенести на другое устройство — скачай копию и загрузи там.</div>' +
+      '<h2 class="sec">Сброс</h2>' +
+      '<div class="field" style="gap:10px;flex-wrap:wrap">' +
+      '<button class="btn danger" id="btn-clear-day">Очистить текущий день</button>' +
+      '<button class="btn danger" id="btn-reset">Стереть всё</button>' +
+      '</div>' +
+      '<div class="note" style="margin-top:8px">«Стереть всё» удалит отметки, покупки и настройки безвозвратно.</div>';
+  }
+
+  /* ---------------- рендер ---------------- */
+  function render() {
+    var m = compute(state);
+    var html = header(m);
+    if (tab === "today") html += screenToday(m);
+    else if (tab === "week") html += screenWeek(m);
+    else if (tab === "ranks") html += screenRanks(m);
+    else if (tab === "shop") html += screenShop(m);
+    else if (tab === "set") html += screenSet(m);
+    else if (tab === "rules") html += screenRules(m);
+    else if (tab === "settings") html += screenSettings(m);
+    html += '<div class="foot">' + (CAN_SAVE
+      ? "Компас · данные хранятся в этом браузере"
+      : "⚠️ Браузер не разрешает сохранение — отметки не сохранятся после закрытия") + '</div>';
+    el("view").innerHTML = html;
+  }
+
+  /* ---------------- действия ---------------- */
+  function touchDay(k) {
+    if (!state.days[k]) state.days[k] = { marks: {}, penalty: 0 };
+    if (!state.days[k].marks) state.days[k].marks = {};
+    return state.days[k];
+  }
+
+  function cycleTask(code) {
+    var k = viewKey();
+    var d = touchDay(k);
+    var cur = d.marks[code] || 0;
+    var next = cur >= 1 ? 0.5 : cur > 0 ? 0 : 1;
+    if (next === 0) delete d.marks[code];
+    else d.marks[code] = next;
+    save();
+    render();
+  }
+
+  function pickTask(code) {
+    var i = state.set.indexOf(code);
+    if (i >= 0) state.set.splice(i, 1);
+    else state.set.push(code);
+    save();
+    render();
+  }
+
+  function buy(name, price) {
+    var m = compute(state);
+    if (m.free < price) { toast("Не хватает кристаллов"); return; }
+    state.purchases.push({ name: name, price: price, date: key(new Date()) });
+    save();
+    toast("Куплено: " + name);
+    render();
+  }
+
+  function download() {
+    var blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "kompas-" + todayKey() + ".json";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  }
+
+  function init() {
+    state = load();
+    var view = el("view");
+    if (!view) return;
+
+    document.addEventListener("click", function (e) {
+      var t = e.target.closest("[data-tab],[data-task],[data-day],[data-buy],[data-pick],#gear");
+      if (!t) return;
+      if (t.id === "gear") { tab = "settings"; render(); return; }
+      if (t.hasAttribute("data-tab")) {
+        tab = t.getAttribute("data-tab");
+        if (t.hasAttribute("data-today")) state.view = null;
+        render(); return;
+      }
+      if (t.hasAttribute("data-task")) { cycleTask(t.getAttribute("data-task")); return; }
+      if (t.hasAttribute("data-day")) { state.view = t.getAttribute("data-day"); tab = "today"; save(); render(); return; }
+      if (t.hasAttribute("data-buy")) { buy(t.getAttribute("data-buy"), +t.getAttribute("data-price")); return; }
+      if (t.hasAttribute("data-pick")) { pickTask(t.getAttribute("data-pick")); return; }
+    });
+
+    document.addEventListener("change", function (e) {
+      if (e.target.id === "f-name") { state.name = e.target.value.slice(0, 40); save(); render(); }
+      if (e.target.id === "f-start") { state.start = e.target.value || todayKey(); save(); render(); }
+      if (e.target.id === "file-import") {
+        var f = e.target.files && e.target.files[0];
+        if (!f) return;
+        var r = new FileReader();
+        r.onload = function () {
+          try {
+            var s = JSON.parse(r.result);
+            if (!s || typeof s !== "object") throw 0;
+            state = s; save(); toast("Копия загружена"); render();
+          } catch (err) { toast("Не получилось прочитать файл"); }
+        };
+        r.readAsText(f);
+      }
+    });
+
+    document.addEventListener("click", function (e) {
+      if (e.target.id === "btn-export") download();
+      if (e.target.id === "btn-import") { var f = el("file-import"); if (f) f.click(); }
+      if (e.target.id === "btn-clear-day") {
+        delete state.days[viewKey()]; save(); toast("День очищен"); render();
+      }
+      if (e.target.id === "btn-reset") {
+        if (confirm("Стереть все отметки, покупки и настройки?")) {
+          localStorage.removeItem(LS); state = defaults(); save(); tab = "today"; render();
+        }
+      }
+    });
+
+    render();
+  }
+
+  window.KP = {
+    compute: compute, defaults: defaults, isoWeek: isoWeek, key: key, parse: parse, D: D,
+    render: render,
+    setTab: function (t) { tab = t; if (!state) state = defaults(); render(); }
+  };
+
+  if (typeof document !== "undefined" && document.addEventListener) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+    else init();
+  }
+})();
+
+</script>
+</body>
+</html>
